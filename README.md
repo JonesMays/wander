@@ -29,6 +29,7 @@ With over 55 million people worldwide living with dementia, caregivers often fac
 ## 🎥 **Demo Video**
 
 [![Demo Video](https://img.youtube.com/vi/jJuIbd9ZXTM/0.jpg)](https://youtu.be/jJuIbd9ZXTM)
+
 *Click the image above to watch the demo!*
 
 ---
