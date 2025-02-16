@@ -1,6 +1,6 @@
 # 🌳 TreeHacks Submission: Wander
 
-![Banner Image](https://via.placeholder.com/1200x400)  
+![Banner Image](wanderrender.png)  
 
 ---
 
