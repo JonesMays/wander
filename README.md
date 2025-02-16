@@ -66,7 +66,7 @@ With over 55 million people worldwide living with dementia, caregivers often fac
 
 ---
 
-## 🚀 **What’s Next for [Your Project Name]**
+## 🚀 **What’s Next for Wander**
 
 - Expand the system to include fall detection and health monitoring features.  
 - Conduct user testing with caregivers and dementia patients to refine the design.  
