@@ -47,6 +47,8 @@ def ensure_chat_fields(chat_data):
         chat_data['fileIDs'] = []
     if 'messages' not in chat_data:
         chat_data['messages'] = []
+    if 'voiceID' not in chat_data:
+        chat_data['voiceID'] = ''
     if 'participant' not in chat_data:
         chat_data['participant'] = []
     if 'createdAt' not in chat_data or not chat_data['createdAt']:

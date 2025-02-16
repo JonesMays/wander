@@ -4,16 +4,22 @@ from twilio.rest import Client
 import datetime
 import firebase_admin
 from firebase_admin import credentials, storage, firestore
+from elevenlabs import ElevenLabs
 # This files contains all the import key stuff
 
 # Twilio credentials (make sure these are set as environment variables for security)
-account_sid = os.environ.get('TWILIO_ACCOUNT_SID', 'AC8258d093c21bcf253394dc71fec9fe67')
-auth_token = os.environ.get('TWILIO_AUTH_TOKEN', '1b0071d3282e96811f5759b0b09fda07')
+account_sid = os.environ.get('TWILIO_ACCOUNT_SID', 'xxxxxxxxxxxx')
+auth_token = os.environ.get('TWILIO_AUTH_TOKEN', 'xxxxxxxxxx')
 twilio_client = Client(account_sid, auth_token)
 
 # OpenAI API and assistant key 
-openAI_client = OpenAI(api_key="sk-proj-5vFAPbxha4bnga12s0rlT3BlbkFJON5D9IeQkZh7e5SxwqGi")
-Assistant_ID = "asst_dILO5bb8bq3NL66oUCUwObE5"
+openAI_client = OpenAI(api_key="xxxx")
+Assistant_ID = "xxxx"
+
+#Eleven labs api key
+eleven_labs = ElevenLabs(
+    api_key="xxxxxxxxx",
+)
 
 # Firebase credentials for using the platform
 #cred = credentials.Certificate('/home/ec2-user/jade_AI/jadeai-77973-firebase-adminsdk-jlw5m-59e0f5a501.json')
@@ -34,7 +40,8 @@ chat_history = {
     'hasSentReminder': False,
     'hasSubscribed': True,
     'createdAt': datetime.datetime.now().isoformat(),
-    'textStop': False
+    'textStop': False,
+    'voiceID': ''
 }
 
 # url to contact card for the number

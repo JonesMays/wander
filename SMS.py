@@ -15,6 +15,10 @@ import Chat
 import Config
 import Functions
 import paho.mqtt.client as mqtt
+from elevenlabs import ElevenLabs
+from pydub import AudioSegment 
+from requests.auth import HTTPBasicAuth
+import Eleven
 
 def get_wander_reply(incoming_message):
     
@@ -38,7 +42,7 @@ def get_wander_reply(incoming_message):
     run = Config.openAI_client.beta.threads.runs.create(
         thread_id=thread.id, 
         assistant_id=Config.Assistant_ID, 
-        tools=[Functions.tools_user_get_current_location, {"type": "file_search"}]
+        tools=[Functions.tools_user_wandered_out, Functions.tools_user_wandered_back,Functions.tools_user_data, {"type": "file_search"}]
     )
 
     print(f"👉 Run Created: {run.id}")
@@ -63,19 +67,27 @@ def get_wander_reply(incoming_message):
                 arguments = json.loads(action['function']['arguments'])
 
                 # This is where they give me their location, tell them something, call 911, or let me speak with them
-                if func_name == "get_social_search":
-                    output = Functions.user_get_current_location(
-                        isGroupChat=False,
-                        conversation_sid=0,
-                        name=arguments['name']['name'],
-                        address=arguments['location']['address'],
-                        area=arguments['location']['area']
+                if func_name == "user_wandered_out":
+                    output = Functions.user_wandered_out(
                     )
                     tool_outputs.append({
                         "tool_call_id": action['id'],
                         "output": output
                     })
-
+                elif func_name == "user_wandered_back":
+                    output = Functions.user_wandered_back(
+                    )
+                    tool_outputs.append({
+                        "tool_call_id": action['id'],
+                        "output": output
+                })
+                elif func_name == "user_data":
+                    output = Functions.user_data(
+                    )
+                    tool_outputs.append({
+                        "tool_call_id": action['id'],
+                        "output": output
+                })
                 else:
                     raise ValueError(f"Unknown function: {func_name}")
 
@@ -160,7 +172,7 @@ def get_sms_reply(incoming_message, from_number, to_number):
                     
                 # Send the contact message
                 Config.twilio_client.messages.create(
-                    body="Ready to start the setup process?",
+                    body="Please send me a 1 minute recording of your voice to start",
                     from_=to_number,
                     to=from_number,
                     media_url=[Config.vcard_url]
@@ -185,42 +197,95 @@ app = Flask(__name__)
 def route():
     return "TreeHack!"
 
-# Handles when user sends in voice recording of themselves
 @app.route("/respond", methods=['GET', 'POST'])
 def reply():
-    
     author = request.values.get('From', None)
     body = request.values.get('Body', None)
+    num_media = int(request.values.get('NumMedia', 0))
 
-    incoming_message=body
-    from_number=author
-    to_number="+15737875233"
+    incoming_message = body
+    from_number = author
+    to_number = "+15737875233"
 
-    return get_sms_reply(incoming_message, from_number, to_number)
+    if num_media > 0:
+        media_url = request.values.get('MediaUrl0')  # Get the first media file
+        content_type = request.values.get('MediaContentType0')  # File type
 
-#This updates the esp32 that data is posted
-@app.route('/wander ', methods=['GET', 'POST'])  # ✅ Allow both GET & POST
-def send_command():
+        print(f"📩 Received Media: {media_url} ({content_type})")
 
-    if request.method == 'GET':
-        command = request.args.get("command", "")  # ✅ Get data from URL
-        if command:
-            print(f"📡 Publishing MQTT message: {command}")  # ✅ Debug log
-            mqtt_client.publish(MQTT_TOPIC, command)  # ✅ Publish to ESP32
-            return jsonify({"message": f"Command '{command}' sent!"})
-        return jsonify({"error": "No command provided"}), 400
+        # File paths
+        original_file_path = f"./audio_{from_number}"
+        mp3_file_path = f"./audio_{from_number}.mp3"
 
-    elif request.method == 'POST':
-        data = request.json
-        command = data.get("command", "")
+        # Determine file extension based on content type
+        if content_type == "audio/x-caf":
+            original_file_path += ".caf"
+            audio_format = "caf"
+        elif content_type == "audio/mp4":
+            original_file_path += ".mp4"
+            audio_format = "mp4"
+        elif content_type == "audio/amr":
+            original_file_path += ".amr"
+            audio_format = "amr"
+        else:
+            response_message = "Oops! I received an unsupported audio format. Please send MP4, CAF, or AMR. 😊🎵"
+            resp = MessagingResponse()
+            resp.message(response_message)
+            return str(resp)
 
-        if command:
-            print(f"📡 Publishing MQTT message: {command}")  # ✅ Debug log
-            mqtt_client.publish(MQTT_TOPIC, command)  # ✅ Publish message
-            return jsonify({"message": f"Command '{command}' sent!"})
-    
-        return jsonify({"error": "No command provided"}), 400
-    
+        # Download the audio file
+        response = requests.get(
+            media_url, 
+            auth=HTTPBasicAuth(Config.account_sid, Config.auth_token)
+        )
+        if response.status_code == 200:
+            with open(original_file_path, "wb") as file:
+                file.write(response.content)
+            print(f"✅ Audio file downloaded: {original_file_path}")
+
+            # Convert to MP3
+            try:
+                audio = AudioSegment.from_file(original_file_path, format=audio_format)
+                audio.export(mp3_file_path, format="mp3")
+                print(f"🎵 Converted to MP3: {mp3_file_path}")
+
+                # 🧼 Clean the audio before processing
+                cleaned_mp3_path = Eleven.clean_audio_with_elevenlabs(mp3_file_path)
+                if cleaned_mp3_path:
+                    mp3_file_path = cleaned_mp3_path  
+
+                # Call ElevenLabs to clone the voice using the received audio
+                voice = Config.eleven_labs.clone(
+                    name=str(from_number),
+                    description="The voice of the care giver for a person with dementia",
+                    files=[mp3_file_path],
+                )
+
+                Config.chat_history['voiceID'] = voice.voice_id
+
+                response_message = f"Yay, I got your audio message! I'm busy cloning that voice now 🎵. Your Wander will light up to let you know when I'm all done! 😊✨"
+
+                Config.chat_history['messages'].append(
+                    {'role': 'user', 'content': f"Audio file received: {media_url}", 'timestamp': datetime.datetime.now().isoformat()}
+                )
+                Chat.save_chat(from_number, Config.chat_history)
+
+            except Exception as e:
+                print(f"❌ Error converting audio: {e}")
+                response_message = "Uh-oh! I couldn't process your audio file. Try sending it again in a different format. 😊🎵"
+
+        else:
+            response_message = "Oops! I couldn't download your audio file. Try sending it again! 😊🎵"
+
+        # Send response back
+        resp = MessagingResponse()
+        resp.message(response_message)
+        return str(resp)
+
+    else:
+        response_message = get_sms_reply(incoming_message, from_number, to_number)
+        return response_message
+
 # Called by Wander if the user leaves the geo fence
 @app.route('/wandering')
 def wandering():
