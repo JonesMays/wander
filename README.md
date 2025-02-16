@@ -96,7 +96,7 @@ With over 55 million people worldwide living with dementia, caregivers often fac
 
 ## 📄 **License**
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.  
+This project is licensed under the MIT License 
 
 ---
 
