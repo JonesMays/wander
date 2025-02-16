@@ -1,4 +1,4 @@
-# 🌳 TreeHacks Submission: [Your Project Name]
+# 🌳 TreeHacks Submission: Wander
 
 ![Banner Image](https://via.placeholder.com/1200x400)  
 
